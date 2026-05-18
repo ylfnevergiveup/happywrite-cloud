@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import jwt from 'jsonwebtoken'
-import { config } from '../config'
+import { supabase } from '../config'
 
 declare global {
   namespace Express {
@@ -19,14 +18,14 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
 
   const token = authHeader.slice(7)
 
-  try {
-    const payload = jwt.verify(token, config.supabaseJwtSecret, {
-      algorithms: ['HS256'],
-    }) as { sub: string }
-
-    req.userId = payload.sub
+  supabase.auth.getUser(token).then(({ data, error }) => {
+    if (error || !data.user) {
+      res.status(401).json({ error: 'Invalid or expired token' })
+      return
+    }
+    req.userId = data.user.id
     next()
-  } catch (err) {
+  }).catch(() => {
     res.status(401).json({ error: 'Invalid or expired token' })
-  }
+  })
 }
