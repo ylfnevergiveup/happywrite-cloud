@@ -28,8 +28,9 @@ app.use(express.static(path.join(new URL('.', import.meta.url).pathname, '..', '
 // Auth routes (no auth required)
 app.use('/api/auth', authRoutes)
 
-// Activation admin routes (no auth required for admin panel)
-app.use('/api/activation/admin', activationRoutes)
+// Auth routes + activation admin (no auth required)
+app.use('/api/auth', authRoutes)
+app.use('/api/activation', activationRoutes)
 
 // All other API routes require auth
 app.use('/api', authMiddleware)
@@ -41,7 +42,6 @@ app.use('/api/world-settings', worldSettingRoutes)
 app.use('/api/style-skills', styleSkillRoutes)
 app.use('/api/settings', settingRoutes)
 app.use('/api/sync', syncRoutes)
-app.use('/api/activation', activationRoutes)
 
 app.listen(config.port, () => {
   console.log(`HappyWrite Cloud running on port ${config.port}`)

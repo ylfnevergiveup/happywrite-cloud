@@ -105,11 +105,6 @@ activationRoutes.get('/status', async (req: Request, res: Response) => {
 activationRoutes.post('/admin/generate', async (req: Request, res: Response) => {
   try {
     const { type = 'vip_month', durationDays = 30, count = 1, note = '' } = req.body
-    const userId = req.userId!
-
-    // Check if user is admin (simple check: first user or hardcoded)
-    // For now, allow any authenticated user to generate codes during dev
-    // TODO: add proper admin check
 
     const codes = []
     for (let i = 0; i < count; i++) {
