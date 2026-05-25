@@ -119,6 +119,24 @@ CREATE TABLE verification_codes (
 );
 CREATE INDEX idx_verification_phone ON verification_codes(phone, created_at DESC);
 
+CREATE TABLE activation_codes (
+  id SERIAL PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  type TEXT NOT NULL DEFAULT 'vip_month',
+  duration_days INTEGER NOT NULL DEFAULT 30,
+  note TEXT DEFAULT '',
+  used_by UUID REFERENCES auth.users(id),
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE vip_status (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  activated_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Enable Row Level Security (disable it since we use service_role)
 ALTER TABLE novels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE volumes ENABLE ROW LEVEL SECURITY;

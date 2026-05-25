@@ -5,6 +5,25 @@ export const syncRoutes = Router()
 
 const tables = ['novels', 'chapters', 'characters', 'outline_nodes', 'world_settings', 'style_skills', 'settings']
 
+// VIP gate middleware
+syncRoutes.use(async (req, res, next) => {
+  try {
+    const { data: vip } = await supabase
+      .from('vip_status')
+      .select('expires_at')
+      .eq('user_id', req.userId!)
+      .maybeSingle()
+
+    if (!vip || new Date(vip.expires_at) < new Date()) {
+      res.status(403).json({ error: 'VIP 已过期，请续费后使用云同步功能', code: 'VIP_REQUIRED' })
+      return
+    }
+    next()
+  } catch {
+    res.status(500).json({ error: 'VIP 状态检查失败' })
+  }
+})
+
 syncRoutes.post('/push', async (req, res) => {
   try {
     const { table, rows } = req.body

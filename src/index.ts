@@ -11,6 +11,7 @@ import { styleSkillRoutes } from './routes/styleSkills'
 import { settingRoutes } from './routes/settings'
 import { syncRoutes } from './routes/sync'
 import { authRoutes } from './routes/auth'
+import { activationRoutes } from './routes/activation'
 
 const app = express()
 
@@ -33,6 +34,7 @@ app.use('/api/world-settings', worldSettingRoutes)
 app.use('/api/style-skills', styleSkillRoutes)
 app.use('/api/settings', settingRoutes)
 app.use('/api/sync', syncRoutes)
+app.use('/api/activation', activationRoutes)
 
 app.listen(config.port, () => {
   console.log(`HappyWrite Cloud running on port ${config.port}`)
