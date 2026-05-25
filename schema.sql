@@ -109,6 +109,16 @@ CREATE TABLE settings (
   UNIQUE(user_id, key)
 );
 
+CREATE TABLE verification_codes (
+  id SERIAL PRIMARY KEY,
+  phone TEXT NOT NULL,
+  code TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX idx_verification_phone ON verification_codes(phone, created_at DESC);
+
 -- Enable Row Level Security (disable it since we use service_role)
 ALTER TABLE novels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE volumes ENABLE ROW LEVEL SECURITY;

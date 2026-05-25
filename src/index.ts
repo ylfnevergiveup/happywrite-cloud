@@ -10,6 +10,7 @@ import { worldSettingRoutes } from './routes/worldSettings'
 import { styleSkillRoutes } from './routes/styleSkills'
 import { settingRoutes } from './routes/settings'
 import { syncRoutes } from './routes/sync'
+import { authRoutes } from './routes/auth'
 
 const app = express()
 
@@ -19,7 +20,10 @@ app.use(express.json({ limit: '10mb' }))
 // Health check (no auth)
 app.get('/health', (_req, res) => { res.json({ ok: true }) })
 
-// All API routes require auth
+// Auth routes (no auth required)
+app.use('/api/auth', authRoutes)
+
+// All other API routes require auth
 app.use('/api', authMiddleware)
 app.use('/api/novels', novelRoutes)
 app.use('/api/chapters', chapterRoutes)
