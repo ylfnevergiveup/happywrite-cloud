@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HappyWrite - 激活码管理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; background: #faf6f0; color: #3d2e1a; padding: 24px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 20px; margin-bottom: 24px; }
+    .card { background: #fff; border: 1px solid #e8d5c4; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    label { display: block; font-size: 13px; margin-bottom: 4px; color: #8a7a6a; }
+    input, select { width: 100%; padding: 8px 12px; border: 1px solid #e8d5c4; border-radius: 8px; font-size: 14px; outline: none; margin-bottom: 12px; }
+    input:focus { border-color: #d4873b; box-shadow: 0 0 0 3px rgba(212,135,59,0.15); }
+    button { padding: 8px 16px; background: #d4873b; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .row { display: flex; gap: 12px; }
+    .row > * { flex: 1; }
+    table { width: 100%; font-size: 13px; border-collapse: collapse; }
+    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #f0e8dc; }
+    th { color: #8a7a6a; font-weight: 500; font-size: 12px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .badge-unused { background: #d4edda; color: #155724; }
+    .badge-used { background: #f8d7da; color: #721c24; }
+    .toast { position: fixed; top: 16px; right: 16px; padding: 10px 16px; border-radius: 8px; font-size: 13px; z-index: 100; display: none; }
+    .toast.success { background: #d4edda; color: #155724; display: block; }
+    .toast.error { background: #f8d7da; color: #721c24; display: block; }
+    .copied-codes { margin-top: 12px; padding: 12px; background: #f0e8dc; border-radius: 8px; font-family: monospace; font-size: 13px; line-height: 1.8; white-space: pre; display: none; }
+  </style>
+</head>
+<body>
+  <h1>HappyWrite - 激活码管理</h1>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px;">生成激活码</h3>
+    <div class="row">
+      <div>
+        <label>类型</label>
+        <select id="type">
+          <option value="vip_month">月卡 (30天)</option>
+          <option value="vip_quarter">季卡 (90天)</option>
+          <option value="vip_year">年卡 (365天)</option>
+          <option value="vip_forever">永久</option>
+          <option value="trial">体验卡 (7天)</option>
+        </select>
+      </div>
+      <div>
+        <label>数量</label>
+        <input type="number" id="count" value="5" min="1" max="100">
+      </div>
+    </div>
+    <label>备注（可选）</label>
+    <input type="text" id="note" placeholder="如：知乎推广赠送">
+    <button onclick="generate()">生成激活码</button>
+    <div id="copied" class="copied-codes"></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px;">激活码列表 <button onclick="loadCodes()" style="font-size:12px;padding:4px 10px;margin-left:8px;">刷新</button></h3>
+    <div id="code-list"><p style="color:#8a7a6a;font-size:13px;">加载中...</p></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const API = '/api/activation/admin'
+
+    // Use a simple token for admin access - in production, change this
+    // Admin key is set via query param or hardcoded
+    const adminToken = localStorage.getItem('hw_admin_token') || ''
+    if (!adminToken) {
+      const token = prompt('输入管理员密码:') || ''
+      localStorage.setItem('hw_admin_token', token)
+      location.reload()
+    }
+
+    async function fetchAPI(path, body) {
+      const res = await fetch(path, {
+        method: body ? 'POST' : 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      })
+      return res.json()
+    }
+
+    function showToast(msg, type) {
+      const t = document.getElementById('toast')
+      t.textContent = msg; t.className = 'toast ' + type
+      setTimeout(() => t.className = 'toast', 2000)
+    }
+
+    async function generate() {
+      const type = document.getElementById('type').value
+      const count = parseInt(document.getElementById('count').value)
+      const note = document.getElementById('note').value
+
+      const daysMap = { vip_month: 30, vip_quarter: 90, vip_year: 365, vip_forever: 36500, trial: 7 }
+      const btn = event.target
+      btn.disabled = true; btn.textContent = '生成中...'
+
+      try {
+        const data = await fetchAPI(`${API}/generate`, { type, durationDays: daysMap[type], count, note })
+        if (data.success) {
+          const el = document.getElementById('copied')
+          el.style.display = 'block'
+          el.innerHTML = '<strong>✅ 生成成功！复制以下激活码：</strong>\n' + data.codes.join('\n')
+          showToast(`已生成 ${count} 个激活码`, 'success')
+          loadCodes()
+        } else {
+          showToast(data.error || '生成失败', 'error')
+        }
+      } catch (e) {
+        showToast('请求失败: ' + e.message, 'error')
+      }
+      btn.disabled = false; btn.textContent = '生成激活码'
+    }
+
+    async function loadCodes() {
+      try {
+        const data = await fetchAPI(`${API}/list`)
+        const el = document.getElementById('code-list')
+        if (!data.codes || data.codes.length === 0) {
+          el.innerHTML = '<p style="color:#8a7a6a;font-size:13px;">暂无激活码</p>'
+          return
+        }
+        el.innerHTML = `<table>
+          <thead><tr><th>激活码</th><th>类型</th><th>状态</th><th>使用者</th><th>使用时间</th><th>创建时间</th></tr></thead>
+          <tbody>${data.codes.map(c => `
+            <tr>
+              <td style="font-family:monospace">${c.code}</td>
+              <td>${c.type} (${c.duration_days}天)</td>
+              <td><span class="badge ${c.used_by ? 'badge-used' : 'badge-unused'}">${c.used_by ? '已使用' : '未使用'}</span></td>
+              <td>${c.used_by ? c.used_by.slice(0,8) + '...' : '-'}</td>
+              <td>${c.used_at ? new Date(c.used_at).toLocaleDateString('zh-CN') : '-'}</td>
+              <td>${new Date(c.created_at).toLocaleDateString('zh-CN')}</td>
+            </tr>`).join('')}
+          </tbody></table>`
+      } catch (e) {
+        document.getElementById('code-list').innerHTML = '<p style="color:red;font-size:13px;">加载失败: ' + e.message + '</p>'
+      }
+    }
+
+    loadCodes()
+  </script>
+</body>
+</html>

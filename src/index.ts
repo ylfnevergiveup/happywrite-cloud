@@ -1,4 +1,5 @@
 import express from 'express'
+import path from 'path'
 import cors from 'cors'
 import { config } from './config'
 import { authMiddleware } from './middleware/auth'
@@ -20,6 +21,9 @@ app.use(express.json({ limit: '10mb' }))
 
 // Health check (no auth)
 app.get('/health', (_req, res) => { res.json({ ok: true }) })
+
+// Static files (admin page, etc.)
+app.use(express.static(path.join(new URL('.', import.meta.url).pathname, '..', 'public')))
 
 // Auth routes (no auth required)
 app.use('/api/auth', authRoutes)
