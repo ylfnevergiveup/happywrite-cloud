@@ -28,6 +28,9 @@ app.use(express.static(path.join(new URL('.', import.meta.url).pathname, '..', '
 // Auth routes (no auth required)
 app.use('/api/auth', authRoutes)
 
+// Activation admin routes (no auth required for admin panel)
+app.use('/api/activation/admin', activationRoutes)
+
 // All other API routes require auth
 app.use('/api', authMiddleware)
 app.use('/api/novels', novelRoutes)
