@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express'
 import crypto from 'crypto'
-import jwt from 'jsonwebtoken'
 import { supabase, config } from '../config'
 import { sendVerificationSMS } from '../utils/sms'
 
@@ -96,49 +95,40 @@ authRoutes.post('/phone/verify', async (req: Request, res: Response) => {
     // Find or create user — use Supabase Admin API
     const email = `${phone}@phone.happywrite.local`
 
-    // Try to get existing user by email (phone-based email)
-    const { data: existingUsers } = await supabase.auth.admin.listUsers()
+    // Use a fixed password pattern per phone so user can re-login
+    const userPassword = `hw_${phone}_happywrite`
 
-    let userId: string
-    const existingUser = existingUsers?.users?.find((u) => u.email === email)
-
-    if (existingUser) {
-      userId = existingUser.id
-    } else {
-      // Create new user
+    // Try to sign in first (if user exists with this password)
+    let signInResult = await supabase.auth.signInWithPassword({ email, password: userPassword })
+    if (signInResult.error) {
+      // User doesn't exist or wrong password — create new user
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email,
         phone: `+86${phone}`,
-        password: crypto.randomUUID() + crypto.randomUUID(),
+        password: userPassword,
         email_confirm: true,
         user_metadata: { phone, login_method: 'phone' },
       })
 
       if (createError || !newUser.user) {
-        res.status(500).json({ success: false, error: '注册失败，请稍后再试' })
+        res.status(500).json({ success: false, error: createError?.message || '注册失败' })
         return
       }
-      userId = newUser.user.id
+
+      // Sign in with the newly created user
+      signInResult = await supabase.auth.signInWithPassword({ email, password: userPassword })
     }
 
-    // Generate Supabase-compatible JWT
-    const token = jwt.sign(
-      {
-        sub: userId,
-        email,
-        phone: `+86${phone}`,
-        aud: 'authenticated',
-        role: 'authenticated',
-      },
-      config.supabaseJwtSecret,
-      { expiresIn: '30d' }
-    )
+    if (signInResult.error || !signInResult.data.session) {
+      res.status(500).json({ success: false, error: '登录失败，请稍后再试' })
+      return
+    }
 
     res.json({
       success: true,
-      token,
+      token: signInResult.data.session.access_token,
       user: {
-        id: userId,
+        id: signInResult.data.user.id,
         phone,
       },
     })
