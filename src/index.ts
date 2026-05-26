@@ -38,7 +38,8 @@ app.post('/api/activation/admin/generate', async (req, res) => {
     const codes: string[] = []
     for (let i = 0; i < count; i++) {
       const code = 'HW-' + crypto.randomBytes(4).toString('hex').toUpperCase()
-      await supabase.from('activation_codes').insert({ code, type, duration_days: durationDays, note })
+      const { error } = await supabase.from('activation_codes').insert({ code, type, duration_days: durationDays, note }).select()
+      if (error) console.error('Insert error:', error)
       codes.push(code)
     }
     res.json({ success: true, codes })
