@@ -25,12 +25,36 @@ app.get('/health', (_req, res) => { res.json({ ok: true }) })
 // Static files (admin page, etc.)
 app.use(express.static(path.join(new URL('.', import.meta.url).pathname, '..', 'public')))
 
-// Auth routes (no auth required)
-app.use('/api/auth', authRoutes)
-
 // Auth routes + activation admin (no auth required)
 app.use('/api/auth', authRoutes)
-app.use('/api/activation', activationRoutes)
+
+import crypto from 'crypto'
+import { supabase } from './config'
+
+// Admin activation routes (no auth, for admin.html)
+app.post('/api/activation/admin/generate', async (req, res) => {
+  try {
+    const { type = 'vip_month', durationDays = 30, count = 1, note = '' } = req.body
+    const codes: string[] = []
+    for (let i = 0; i < count; i++) {
+      const code = 'HW-' + crypto.randomBytes(4).toString('hex').toUpperCase()
+      await supabase.from('activation_codes').insert({ code, type, duration_days: durationDays, note })
+      codes.push(code)
+    }
+    res.json({ success: true, codes })
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message })
+  }
+})
+
+app.get('/api/activation/admin/list', async (_req, res) => {
+  try {
+    const { data } = await supabase.from('activation_codes').select('*').order('created_at', { ascending: false }).limit(200)
+    res.json({ success: true, codes: data || [] })
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message })
+  }
+})
 
 // All other API routes require auth
 app.use('/api', authMiddleware)
@@ -42,6 +66,7 @@ app.use('/api/world-settings', worldSettingRoutes)
 app.use('/api/style-skills', styleSkillRoutes)
 app.use('/api/settings', settingRoutes)
 app.use('/api/sync', syncRoutes)
+app.use('/api/activation', activationRoutes)
 
 app.listen(config.port, () => {
   console.log(`HappyWrite Cloud running on port ${config.port}`)
